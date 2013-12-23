@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <18-Dec-2013 15:03:03 PST by rich@noir.com>
+# Time-stamp: <23-Dec-2013 14:17:45 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley, All Rights Reserved.
 
@@ -18,13 +18,8 @@ __docformat__ = "restructuredtext en"
 me='K Richard Pixley'
 memail='rich@noir.com'
 
-lzma = False
-
 install_requires = [
 ]
-
-if lzma:
-    install_requires.append('backports.lzma')
 
 setup_requirements = install_requires + [
     'nose',
