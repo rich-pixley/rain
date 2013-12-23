@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <18-Dec-2013 14:41:58 PST by rich@noir.com>
+# Time-stamp: <18-Dec-2013 15:03:03 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley, All Rights Reserved.
 
@@ -21,10 +21,6 @@ memail='rich@noir.com'
 lzma = False
 
 install_requires = [
-    'arpy',
-    'bz2file',
-    'cpiofile',
-    'elffile',
 ]
 
 if lzma:
