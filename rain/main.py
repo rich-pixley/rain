@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <18-Dec-2013 14:54:55 PST by rich@noir.com>
+# Time-stamp: <23-Dec-2013 14:19:20 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 
 """
-Shell callable driver for the :py:mod:`rain` library.
+Shell callable driver for the :py:mod:`rain`.
 """
 
 import argparse

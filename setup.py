@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <23-Dec-2013 14:17:45 PST by rich@noir.com>
+# Time-stamp: <23-Dec-2013 14:18:24 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley, All Rights Reserved.
 
@@ -29,17 +29,17 @@ setup_requirements = install_requires + [
 version_tuple = platform.python_version_tuple()
 version = platform.python_version()
 
-if version not in [
-    '3.0.1',
-    '3.1.5',
-    '3.3.1',
-    ]:
-    setup_requirements.append('setuptools_lint')
+# if version not in [
+#     '3.0.1',
+#     '3.1.5',
+#     '3.3.1',
+#     ]:
+#     setup_requirements.append('setuptools_lint')
 
-if version not in [
-    '3.0.1',
-    ]:
-    setup_requirements.append('sphinx>=1.0.5')
+# if version not in [
+#     '3.0.1',
+#     ]:
+#     setup_requirements.append('sphinx>=1.0.5')
 
 
 setuptools.setup(
