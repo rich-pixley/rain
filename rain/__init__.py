@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <23-Dec-2013 15:17:32 PST by rich@noir.com>
+# Time-stamp: <26-Jan-2014 18:41:54 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 
@@ -79,6 +79,3 @@ class Location:
         self.workspace.remove()
         self.workspace = None
 
-
-def do_pass():
-    
