@@ -1,4 +1,4 @@
-# Time-stamp: <18-Dec-2013 14:35:48 PST by rich@noir.com>
+# Time-stamp: <26-Jan-2014 18:38:16 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 #
@@ -120,7 +120,7 @@ lint: ${python}
 
 .PHONY: install
 install: ${python}
-	${setuppy} $@
+	${setuppy} $@ --user
 
 .PHONY: build_sphinx
 build_sphinx: ${python}
