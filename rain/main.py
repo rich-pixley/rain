@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <29-Jan-2014 17:35:56 PST by rich@noir.com>
+# Time-stamp: <29-Jan-2014 19:47:27 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -53,29 +53,92 @@ def pushdir(newdir):
 def isodate():
     return datetime.datetime.now().isoformat()
 
-def WSiso():
-    return isodate() # %Y-%m-%dT%H:%M:%S%z
+class WorkArea:
+    def __init__(self, logger):
+        self.logger = logger
 
-def raindirs():
-    return sorted([os.path.dirname(d) for d in glob.glob('*/.rain')])
+    @staticmethod
+    def raindirs():
+        return sorted([os.path.dirname(d) for d in glob.glob('*/.rain')])
 
-def WSkeep(logger, count):
-    dirs = raindirs()
-    if count == 0:
-        for dir in dirs:
-            logger.info('%s removing...', dir)
-            shutil.rmtree(dir)
-            logger.debug('%s removed.', dir)
-    else:
-        for dir in dirs[:-count]:
-            logger.info('%s removing...', dir)
-            shutil.rmtree(dir)
-            logger.debug('%s removed.', dir)
+    def keep(self, count):
+        dirs = self.raindirs()
+        if count == 0:
+            for dir in dirs:
+                self.logger.info('%s removing...', dir)
+                shutil.rmtree(dir)
+                self.logger.debug('%s removed.', dir)
+        else:
+            for dir in dirs[:-count]:
+                self.logger.info('%s removing...', dir)
+                shutil.rmtree(dir)
+                self.logger.debug('%s removed.', dir)
+
+    def new_working_directory(self, buildscript):
+        return WorkingDirectory(self.logger, isodate(), buildscript)
+
+class PopulationException(Exception):
+    pass
+
+class BuildException(Exception):
+    pass
+
+class WorkingDirectory:
+    def __init__(self, logger, name, buildscript):
+        self.logger = logger
+        self.name = name
+        self.buildscript = buildscript
+
+    def clear(self):
+        if os.path.exists(self.name):
+            if os.path.isdir(self.name):
+                self.logger.info('removing existing directory named \"%s\"', self.name)
+                shutil.rmtree(self.name)
+            else:
+                self.logger.info('removing existing file named \"%s\"', self.name)
+                os.remove(self.name)
+
+        self.logger.info('%s - mkdir', self.name)
+        os.mkdir(self.name)
+
+    @contextlib.contextmanager
+    def pushdir(self):
+        savedir = os.getcwd()
+        os.chdir(self.name)
+        yield
+
+        os.chdir(savedir)
+
+    def status(self, state):
+        with open('.rain', 'w') as dotrain:
+            dotrain.write('{}\n'.format(state))
+
+    def populate(self, logfile):
+        retval = self.subcall(logfile, 'populate')
+        if retval:
+            self.logger.error('{} populate failed'.format(self.name))
+            raise PopulationException
+
+        self.status('populated')
+        return not retval
+
+    def build(self, logfile):
+        retval = self.subcall(logfile, 'build')
+
+        if retval:
+            self.logger.error('{} build failed'.format(self.name))
+            raise BuildException
+
+        self.status('built')
+        return not retval
+
+    def subcall(self, logfile, target):
+        cmd = '{} {}'.format(self.buildscript, target)
+        self.logger.info('%s - cd && %s', self.name, cmd)
+        return subprocess.call(shlex.split(cmd), stdout=logfile, stderr=logfile)
+
 
 def main():
-    # location = Location('.')
-    # workspace = location.next_workspace()
-
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S%z')
     logger = logging.getLogger()
 
@@ -88,6 +151,8 @@ def main():
 
     logger.setLevel(log_level)
 
+    area = WorkArea(logger)
+
     if options.action in ['build']:
 
         # do stuff
@@ -98,39 +163,22 @@ def main():
             counter -= 1
 
             if options.keep != -1: # minus one means "keep everything"
-                WSkeep(logger, options.keep)
+                area.keep(options.keep)
 
-            ws = WSiso()
+            wd = area.new_working_directory('../{}'.format(mkfile))
+            wd.clear()
 
-            if os.path.exists(ws):
-                if os.path.isdir(ws):
-                    logger.info('removing existing directory named \"%s\"', ws)
-                    shutil.rmtree(ws)
-                else:
-                    logger.info('removing existing file named \"%s\"', ws)
-                    os.remove(ws)
-
-            logger.info('%s - mkdir', ws)
-            os.mkdir(ws)
-
-            if os.path.exists(mkfile):
-                bldcmd = '../{} build'.format(mkfile)
-            else:
+            if not os.path.exists(mkfile):
                 logger.error('No %s', mkfile)
                 return 1
 
-            with pushdir(ws):
-                with open('.rain', 'w') as dotrain:
-                    dotrain.write('incomplete\n')
+            with wd.pushdir():
+                wd.status('incomplete')
+                with open('Log-' + isodate(), 'w') as logfile:
+                    retval = wd.populate(logfile)
 
-                with open('Log-' + isodate(), 'w') as output:
-                    logger.info('%s - cd && %s', ws, bldcmd)
-                    retval = subprocess.call(shlex.split(bldcmd), stdout=output, stderr=output)
-
-                with open('.rain', 'w') as dotrain:
-                    dotrain.write('failure\n' if retval else 'success\n')
-
-            logger.info('%s - %s', ws, 'failed' if retval else 'succeeded')
+                    if retval:
+                        retval = wd.build(logfile)
 
         return retval
 
@@ -140,10 +188,10 @@ def main():
             print(stuff)
 
     elif options.action in ['keep']:
-        WSkeep(logger, options.count)
+        area.keep(options.count)
 
     elif options.action in removal_cmds:
-        for dir in raindirs()[:options.count]:
+        for dir in area.raindirs()[:options.count]:
             shutil.rmtree(dir)
 
     return False
