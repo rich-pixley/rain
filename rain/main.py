@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <26-Jan-2014 21:01:50 PST by rich@noir.com>
+# Time-stamp: <29-Jan-2014 17:35:56 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -10,18 +10,22 @@ Shell callable driver for :py:mod:`rain`.
 """
 
 import argparse
+import contextlib
+import datetime
 import fnmatch
+import glob
 import logging
 import os
 import re
-import contextlib
-import subprocess
 import shlex
 import shutil
+import subprocess
 
 import rain
 
 __docformat__ = "restructuredtext en"
+
+removal_cmds = ['remove', 'rm', 'delete', 'del']
 
 @contextlib.contextmanager
 def pushdir(newdir):
@@ -46,6 +50,28 @@ def pushdir(newdir):
 
 #         return True
 
+def isodate():
+    return datetime.datetime.now().isoformat()
+
+def WSiso():
+    return isodate() # %Y-%m-%dT%H:%M:%S%z
+
+def raindirs():
+    return sorted([os.path.dirname(d) for d in glob.glob('*/.rain')])
+
+def WSkeep(logger, count):
+    dirs = raindirs()
+    if count == 0:
+        for dir in dirs:
+            logger.info('%s removing...', dir)
+            shutil.rmtree(dir)
+            logger.debug('%s removed.', dir)
+    else:
+        for dir in dirs[:-count]:
+            logger.info('%s removing...', dir)
+            shutil.rmtree(dir)
+            logger.debug('%s removed.', dir)
+
 def main():
     # location = Location('.')
     # workspace = location.next_workspace()
@@ -62,36 +88,66 @@ def main():
 
     logger.setLevel(log_level)
 
-    # do stuff
+    if options.action in ['build']:
 
-    ws = 'WorkSpace'
+        # do stuff
+        counter = options.count
+        mkfile = 'rain.mk'
 
-    counter = options.count
+        while options.count == 0 or counter > 0:
+            counter -= 1
 
-    while options.count == 0 or counter > 0:
-        counter -= 1
+            if options.keep != -1: # minus one means "keep everything"
+                WSkeep(logger, options.keep)
 
-        if os.path.exists(ws):
-            if os.path.isdir(ws):
-                logger.info('removing existing directory named \"%s\"', ws)
-                shutil.rmtree(ws)
+            ws = WSiso()
+
+            if os.path.exists(ws):
+                if os.path.isdir(ws):
+                    logger.info('removing existing directory named \"%s\"', ws)
+                    shutil.rmtree(ws)
+                else:
+                    logger.info('removing existing file named \"%s\"', ws)
+                    os.remove(ws)
+
+            logger.info('%s - mkdir', ws)
+            os.mkdir(ws)
+
+            if os.path.exists(mkfile):
+                bldcmd = '../{} build'.format(mkfile)
             else:
-                logger.info('removing existing file named \"%s\"', ws)
-                os.remove(ws)
+                logger.error('No %s', mkfile)
+                return 1
 
-        logger.info('mkdir %s', ws)
-        os.mkdir(ws)
-
-        bldcmd = '../rain.mk build'
-
-        with open('Output', 'w') as output:
             with pushdir(ws):
-                logger.info('cd %s && %s', ws, bldcmd)
-                retval = subprocess.call(shlex.split(bldcmd), stdout=output, stderr=output)
+                with open('.rain', 'w') as dotrain:
+                    dotrain.write('incomplete\n')
 
-        logger.info('build %s', 'failed' if retval else 'succeeded')
+                with open('Log-' + isodate(), 'w') as output:
+                    logger.info('%s - cd && %s', ws, bldcmd)
+                    retval = subprocess.call(shlex.split(bldcmd), stdout=output, stderr=output)
 
-    return retval
+                with open('.rain', 'w') as dotrain:
+                    dotrain.write('failure\n' if retval else 'success\n')
+
+            logger.info('%s - %s', ws, 'failed' if retval else 'succeeded')
+
+        return retval
+
+    elif options.action in ['ls']:
+        stuff = '\n'.join(raindirs())
+        if stuff:
+            print(stuff)
+
+    elif options.action in ['keep']:
+        WSkeep(logger, options.count)
+
+    elif options.action in removal_cmds:
+        for dir in raindirs()[:options.count]:
+            shutil.rmtree(dir)
+
+    return False
+
 
 def _parse_args():
     """
@@ -102,10 +158,16 @@ def _parse_args():
     """
     parser = argparse.ArgumentParser(description='rain - a new sort of automated builder.')
     
-    # parser.add_argument('thingtodo', help='what shall we do?')
+    parser.add_argument('action', help='what shall we do?', default='build', nargs='?',
+                        choices=['build',
+                                 'ls',
+                                 'keep'] + removal_cmds)
 
     parser.add_argument('-c', '--count', type=int, default=1,
-                        help='number of times to iterate. [default: %(default)s]')
+                        help='a count of items on which to operate. [default: %(default)s]')
+
+    parser.add_argument('--keep', type=int, default=-1,
+                        help='how many builds should we keep around? [default: %(default)s]')
 
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Be more verbose. (can be repeated)')
 
