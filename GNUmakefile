@@ -1,4 +1,4 @@
-# Time-stamp: <26-Jan-2014 18:38:16 PST by rich@noir.com>
+# Time-stamp: <19-Feb-2014 15:00:14 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 #
@@ -41,11 +41,12 @@ ${python}:
 	${virtualenv} --no-site-packages ${venv}
 	find ${venv} -name distribute\* -o -name setuptools\* \
 		| xargs rm -rf
-	${activate} && python distribute_setup.py
 
+.PHONY: clean
 clean:
 	rm -rf ${venvbase}* .stamp-virtualenv .stamp-apt build \
-		dist ${packagename}.egg-info *.pyc apidocs *.egg *~
+		dist ${packagename}.egg-info *.pyc apidocs *.egg *~ \
+		__pycache__
 
 # doc: ${pydoctor}
 # 	${activate} && pydoctor --add-module=${packagename}.py \

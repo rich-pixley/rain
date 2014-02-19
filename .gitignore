@@ -1,3 +1,7 @@
+*.egg
 *~
 __pycache__
+build
+rain-dev*
+rain.egg-info
 setuptools-*.tar.gz

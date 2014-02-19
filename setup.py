@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <23-Dec-2013 14:18:24 PST by rich@noir.com>
+# Time-stamp: <19-Feb-2014 15:01:48 PST by rich@noir.com>
 
-# Copyright © 2013 K Richard Pixley, All Rights Reserved.
+# Copyright © 2013 - 2014 K Richard Pixley, All Rights Reserved.
 
 import os
 import platform
 
-import distribute_setup
-distribute_setup.use_setuptools()
+from ez_setup import use_setuptools
+use_setuptools()
 
 import setuptools
+
+import rain
 
 __docformat__ = "restructuredtext en"
 
@@ -22,19 +24,19 @@ install_requires = [
 ]
 
 setup_requirements = install_requires + [
-    'nose',
-    'setuptools_git',
+#    'nose',
+#    'setuptools_git',
 ]
 
 version_tuple = platform.python_version_tuple()
 version = platform.python_version()
 
-# if version not in [
-#     '3.0.1',
-#     '3.1.5',
-#     '3.3.1',
-#     ]:
-#     setup_requirements.append('setuptools_lint')
+if version not in [
+    '3.0.1',
+    '3.1.5',
+    '3.3.1',
+    ]:
+    setup_requirements.append('setuptools_lint')
 
 # if version not in [
 #     '3.0.1',
@@ -54,7 +56,7 @@ setuptools.setup(
     download_url = 'https://api.github.com/repos/rich-pixley/rain/tarball',
     description='A flexible and extendable automated builder.',
     license='GPL2',
-    long_description='',
+    long_description=rain.__doc__,
     setup_requires=setup_requirements,
     install_requires=install_requires,
     py_modules=['rain'],
