@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <19-Feb-2014 15:01:48 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 11:53:52 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley, All Rights Reserved.
 
@@ -24,8 +24,9 @@ install_requires = [
 ]
 
 setup_requirements = install_requires + [
-#    'nose',
-#    'setuptools_git',
+    'wheel',
+    # 'nose',
+    # 'setuptools_git',
 ]
 
 version_tuple = platform.python_version_tuple()

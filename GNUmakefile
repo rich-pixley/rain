@@ -1,4 +1,4 @@
-# Time-stamp: <19-Feb-2014 15:00:14 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 11:49:23 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 #
@@ -76,6 +76,10 @@ sdist: ${python}
 .PHONY: bdist
 bdist: ${python}
 	${setuppy} bdist
+
+.PHONY: bdist_wheel
+bdist_wheel: ${python}
+	${setuppy} bdist_wheel
 
 .PHONY: develop
 develop: ${venv}/lib/${vpython}/site-packages/${packagename}.egg-link
