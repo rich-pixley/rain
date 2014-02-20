@@ -1,4 +1,4 @@
-# Time-stamp: <20-Feb-2014 11:49:23 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 12:55:57 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 #
@@ -39,8 +39,7 @@ pydoctor := ${venv}/bin/pydoctor
 ve: ${python}
 ${python}:
 	${virtualenv} --no-site-packages ${venv}
-	find ${venv} -name distribute\* -o -name setuptools\* \
-		| xargs rm -rf
+	${python} ./ez_setup.py
 
 .PHONY: clean
 clean:
