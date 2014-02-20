@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <18-Feb-2014 16:08:40 PST by rich@mito>
+# Time-stamp: <19-Feb-2014 16:31:35 PST by rich@noir.com>
 
 # Copyright © 2013 K Richard Pixley
 
@@ -20,12 +20,9 @@ import os
 import shutil
 import logging
 
-logger = logging.getLogger(__name__)
-
 class RainException(Exception):
     """Base class for all :py:mod:`rain` exceptions"""
     pass
-
 
 class WorkAreaAllocationError(RainException):
     """Raised when we can't mkdir a WorkArea"""
@@ -33,6 +30,10 @@ class WorkAreaAllocationError(RainException):
 
 class AllocationError(RainException):
     """Raised when we can't allocate a workspace."""
+    pass
+
+class MissingMkfileError(RainException):
+    """Raised when creating a WorkingDirectory and we can't find an mk file."""
     pass
 
 
