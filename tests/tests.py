@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 16:29:31 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 17:16:32 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -81,14 +81,9 @@ class WorkingDirectory(unittest.TestCase):
         self.assertEqual(os.getcwd(), cwd)
 
     def test_status(self):
-        with self.wdir.pushd():
-            for i in ['good', 'bad', 'ugly']:
-                self.wdir.status(i)
-
-                with open(self.wdir.statusfilename, 'r') as ifile:
-                    self.assertEquals(ifile.read().strip(), i)
-
-            os.remove(self.wdir.statusfilename)
+        for i in ['good', 'bad', 'ugly']:
+            self.wdir.status = i
+            self.assertEquals(self.wdir.status, i)
 
     def tearDown(self):
         shutil.rmtree(self.tdir)

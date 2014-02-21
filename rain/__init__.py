@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 16:29:56 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 17:28:16 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
 """
 Class representing disk locations.
-
-.todo: workspace as context manager?
 """
 
 __docformat__ = 'restructuredtext en'
@@ -49,10 +47,74 @@ class BuildError(RainException):
     """Raised when building fails"""
     pass
 
+class StateRemovalError(Exception):
+    """Raised when we fail to remove a state file"""
+    pass
 
 def isodate():
     """return a single word string representing the time now in iso8609 format"""
     return datetime.datetime.now().isoformat()
+
+
+class StateDirectory(object):
+    """StateDirectory"""
+
+    def __init__(self, dirname):
+        object.__setattr__(self, 'dirname', os.path.abspath(os.path.normpath(dirname)))
+
+        try:
+            os.mkdir(self.dirname)
+
+        except OSError:
+            if not os.path.isdir(self.dirname):
+                raise
+
+    def fname(self, name):
+        """fname"""
+        return os.path.join(self.dirname, name)
+
+    def __getattr__(self, name):
+        """accesssor"""
+        fname = self.fname(name)
+
+        if os.path.exists(fname):
+            with open(fname, 'r') as ifile:
+                return ifile.read().strip()
+        else:
+            return None
+
+    def __setattr__(self, name, newval):
+        """setter"""
+        fname = self.fname(name)
+
+        with open(fname, 'w') as ofile:
+            ofile.write(newval)
+
+    def __deleter__(self, name):
+        """deleter"""
+        fname = self.fname(name)
+
+        try:
+            os.remove(fname)
+
+        except OSError:
+            if not os.path.exists(fname):
+                pass
+            else:
+                raise StateRemovalError
+
+        try:
+            os.rmdir(self.dirname)
+
+        except OSError:
+            pass
+
+    def property(self, name):
+        """return a property for name"""
+        return property(lambda: self.__getattr__(name),
+                        lambda newval: self.__setattr__(name, newval),
+                        lambda: self.__deleter__(name),
+                        'generated property from StateDirectory({})'.format(name))
 
 
 class WorkingDirectory(object):
@@ -81,6 +143,9 @@ class WorkingDirectory(object):
             logger.error('No %s', os.path.abspath(mkfilename))
             raise MissingMkfileError
 
+        self.state = StateDirectory(self.absname)
+        self.status = self.state.property('status')
+
     def clear(self):
         """
         Remove any existing directory by our name and mkdir a new one.
@@ -108,11 +173,6 @@ class WorkingDirectory(object):
 
         os.chdir(savedir)
 
-    def status(self, state):
-        """write state to our status file"""
-        with open(os.path.join(self.absname, self.statusfilename), 'w') as dotrain:
-            dotrain.write('{}\n'.format(state))
-
     def update(self, logfile):
         """bring our source current"""
         retval = self._subcall(logfile, 'update')
@@ -120,7 +180,7 @@ class WorkingDirectory(object):
             self.logger.error('{} update failed'.format(self.name))
             raise UpdateError
 
-        self.status('updated')
+        self.status = 'updated'
         return not retval
 
     def build(self, logfile):
@@ -131,7 +191,7 @@ class WorkingDirectory(object):
             self.logger.error('{} build failed'.format(self.name))
             raise BuildError
 
-        self.status('built')
+        self.status = 'built'
         return not retval
 
     def poll(self, logfile):
