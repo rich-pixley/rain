@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 14:22:29 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 16:29:56 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -41,11 +41,11 @@ class MissingMkfileError(RainException):
     """Raised when creating a WorkingDirectory and we can't find an mk file."""
     pass
 
-class UpdateException(Exception):
-    """Raised when populating fails"""
+class UpdateError(RainException):
+    """Raised when updating fails"""
     pass
 
-class BuildException(Exception):
+class BuildError(RainException):
     """Raised when building fails"""
     pass
 
@@ -118,7 +118,7 @@ class WorkingDirectory(object):
         retval = self._subcall(logfile, 'update')
         if retval:
             self.logger.error('{} update failed'.format(self.name))
-            raise UpdateException
+            raise UpdateError
 
         self.status('updated')
         return not retval
@@ -129,7 +129,7 @@ class WorkingDirectory(object):
 
         if retval:
             self.logger.error('{} build failed'.format(self.name))
-            raise BuildException
+            raise BuildError
 
         self.status('built')
         return not retval

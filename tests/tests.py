@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 14:27:36 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 16:29:31 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -127,11 +127,11 @@ class WorkingDirectoryFailure(WorkingDirectory):
         os.link(self.successmkname, self.successmk)
 
     def test_update(self):
-        with self.assertRaises(rain.UpdateException):
+        with self.assertRaises(rain.UpdateError):
             self.wdir.update(self.output)
 
     def test_build(self):
-        with self.assertRaises(rain.BuildException):
+        with self.assertRaises(rain.BuildError):
             self.wdir.build(self.output)
 
     def test_poll(self):
