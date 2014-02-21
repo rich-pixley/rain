@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 13:03:21 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 18:59:30 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -50,7 +50,7 @@ def main():
             counter -= 1
 
     elif options.action in ['ls']:
-        stuff = '\n'.join(area.raindirs())
+        stuff = '\n'.join(area.wds)
         if stuff:
             print(stuff)
 
@@ -61,7 +61,7 @@ def main():
     #     return area.poll(logfile)
 
     elif options.action in REMOVAL_CMDS:
-        for directory in area.raindirs()[:options.count]:
+        for directory in area.wds[:options.count]:
             shutil.rmtree(directory)
 
     return retval

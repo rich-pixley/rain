@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 17:28:16 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 19:33:13 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -35,8 +35,12 @@ class AllocationError(RainException):
     """Raised when we can't allocate a workspace."""
     pass
 
-class MissingMkfileError(RainException):
-    """Raised when creating a WorkingDirectory and we can't find an mk file."""
+class MissingCtrlFileError(RainException):
+    """Raised when we can't find control file."""
+    pass
+
+class NoXCtrlFileError(RainException):
+    """Raised when control file is not executable."""
     pass
 
 class UpdateError(RainException):
@@ -122,12 +126,12 @@ class WorkingDirectory(object):
     Class reprenting a working directory.
     """
 
-    mkfilename = 'rain.mk'
-    statusfilename = '.rain'
+    statedirname = '.rain-work'
 
-    def __init__(self, logger, name):
+    def __init__(self, logger, name, ctrlfilename):
         self.logger = logger
         self.name = name
+        self.ctrlfilename = ctrlfilename
 
         # relname isn't dynamic because it's dependent on cwd.
         name = os.path.normpath(name)
@@ -138,13 +142,17 @@ class WorkingDirectory(object):
             self.absname = os.path.abspath(name)
             self.relname = name
 
-        mkfilename = os.path.join(os.path.dirname(self.name), self.mkfilename)
-        if not os.path.exists(mkfilename):
-            logger.error('No %s', os.path.abspath(mkfilename))
-            raise MissingMkfileError
+        if not os.path.isdir(self.absname):
+            self.clear()
 
-        self.state = StateDirectory(self.absname)
+        self.state = StateDirectory(os.path.join(self.absname, self.statedirname))
         self.status = self.state.property('status')
+
+        # FIXME: I don't understand why this is necessary.  But
+        # without it, the first reference to it returns a property
+        # object type rather than evaluating.
+
+        self.status = None
 
     def clear(self):
         """
@@ -201,8 +209,19 @@ class WorkingDirectory(object):
         return not retval
 
     def _subcall(self, logfile, target):
-        """call mkfile on target"""
-        cmd = '{} {}'.format(os.path.join('.', self.mkfilename), target)
+        """call ctrlfile on target"""
+
+        # FIXME: this should probably check for executability but I
+        # don't seen an easy call for that.
+
+        if not os.path.exists(self.ctrlfilename):
+            raise MissingCtrlFileError
+
+        if not os.access(self.ctrlfilename, os.X_OK,
+                         effective_ids=os.access in os.supports_effective_ids):
+            raise NoXCtrlFileError
+
+        cmd = '{} {}'.format(os.path.join('.', self.ctrlfilename), target)
         self.logger.info('%s - cd && %s', self.name, cmd)
         return subprocess.call(shlex.split(cmd), stdout=logfile, stderr=logfile, cwd=self.absname)
 
@@ -212,14 +231,14 @@ class WorkArea(object):
     A WorkArea represents a place in the file system which will contain
     WorkingDirectory's.  It also contains a rain.mk and some state.
 
-    At any given point in time, it may also have a current_working_directory.
+    At any given point in time, it may also have a cwd.
 
     The state of a WorkArea resides entirely on disk.
     """
 
-    current_working_directory_file = '.rain-current_working_directory'
+    statedirname = '.rain-area'
 
-    def __init__(self, logger, name='.'):
+    def __init__(self, logger, name='.', ctrlfilename='rain.mk'):
         self.logger = logger
         self.name = name
 
@@ -234,42 +253,18 @@ class WorkArea(object):
 
         try:
             os.mkdir(name)
-
         except OSError:
             if not os.path.isdir(name):
                 logger.error('FATAL: WorkArea %s exists and is not a directory'.format(self.name))
                 raise WorkAreaAllocationError
 
-    @property
-    def current_working_directory(self): # property/accessor
-        """accesssor for current_working_directory"""
-        if os.path.exists(self.current_working_directory_file):
-            with open(self.current_working_directory_file, 'r') as ifile:
-                return ifile.read().strip()
-        else:
-            return None
+        self.ctrlfilename = os.path.join(self.absname, ctrlfilename)
 
-    @current_working_directory.setter
-    def current_working_directory(self, new):
-        """setter for current_working_directory"""
-        with open(self.current_working_directory_file, 'w') as ofile:
-            ofile.write(new)
-
-        # pylint: disable=W0201
-        self._current_working_directory = new
-        # pylint: enable=W0201
-
-    @current_working_directory.deleter
-    def current_working_directory(self):
-        """deleter for current_working_directory"""
-        try:
-            os.remove(self.current_working_directory_file)
-        except OSError:
-            if not os.path.exists(self.current_working_directory_file):
-                pass
-            else:
-                self.logger.error('FATAL: failed to remove {}'.format(self.current_working_directory_file))
-                raise
+        self.state = StateDirectory(os.path.join(self.absname, self.statedirname))
+        self.cwd = self.state.property('cwd')
+        self.cwd = None
+        self._wds = self.state.property('wds')
+        self.wds = []
 
     @contextlib.contextmanager
     def pushd(self):
@@ -284,15 +279,27 @@ class WorkArea(object):
         os.chdir(savedir)
 
 
-    @staticmethod
-    def raindirs():
-        """return a list of working directories"""
-        return sorted([os.path.dirname(d) for d in glob.glob('*/.rain')])
+    @property
+    def wds(self):
+        """return a list of known working directories"""
+        return sorted(self._wds.strip().split('\n'))
+
+    @wds.setter
+    def wds(self, newval):
+        """wds setter"""
+        self._wds = ''.join([x + '\n' for x in newval])
+
+    def new_working_directory(self):
+        """Create a new working directory"""
+        name = isodate()
+        newwd = WorkingDirectory(self.logger, name, self.ctrlfilename)
+        self.wds += [name]
+        return newwd
 
     def keep(self, count):
         """possibly remove some working directories"""
 
-        dirs = self.raindirs()
+        dirs = self.wds()
         if count == 0:
             for directory in dirs:
                 self.logger.info('%s removing...', directory)
@@ -304,10 +311,6 @@ class WorkArea(object):
                 shutil.rmtree(directory)
                 self.logger.debug('%s removed.', directory)
 
-    def new_working_directory(self):
-        """Create a new working directory"""
-        return WorkingDirectory(self.logger, isodate())
-
     def do_pass(self, keep=-1):
         """do a buildpass"""
         retval = False # True on error
@@ -316,24 +319,24 @@ class WorkArea(object):
             self.keep(keep)
 
         with open('Log-' + isodate(), 'w') as logfile:
-            working_directory = self.current_working_directory
+            wdir = self.cwd
 
-            if not working_directory:
-                working_directory = self.new_working_directory()
-                working_directory.clear()
-                working_directory.status('fresh')
+            if not wdir:
+                wdir = self.new_working_directory()
+                wdir.clear()
+                wdir.status = 'fresh'
 
-            with working_directory.pushd():
-                retval |= working_directory.update(logfile)
+            with wdir.pushd():
+                retval |= wdir.update(logfile)
 
                 if retval:
                     return retval
 
-                working_directory.status('incomplete')
-                retval |= working_directory.build(logfile)
+                wdir.status('incomplete')
+                retval |= wdir.build(logfile)
 
             if not retval:
-                self.current_working_directory = working_directory.name
+                self.cwd = wdir.name
 
         return retval
 
