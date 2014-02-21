@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 12:39:32 PST by rich@noir.com>
+# Time-stamp: <21-Feb-2014 13:01:31 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley, All Rights Reserved.
+
+# FIXME: look into tox
 
 import os
 import platform
