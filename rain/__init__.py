@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 19:33:13 PST by rich@noir.com>
+# Time-stamp: <21-Feb-2014 09:35:32 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -292,7 +292,8 @@ class WorkArea(object):
     def new_working_directory(self):
         """Create a new working directory"""
         name = isodate()
-        newwd = WorkingDirectory(self.logger, name, self.ctrlfilename)
+        absname = os.path.normpath(os.path.join(self.absname, name))
+        newwd = WorkingDirectory(self.logger, absname, self.ctrlfilename)
         self.wds += [name]
         return newwd
 

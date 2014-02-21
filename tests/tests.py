@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 19:48:27 PST by rich@noir.com>
+# Time-stamp: <21-Feb-2014 09:36:13 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -69,6 +69,9 @@ class WorkingDirectory(unittest.TestCase):
         self.wdir = rain.WorkingDirectory(logger, self.tdir, self.ctrlstub)
         self.wdir.clear()
 
+    def tearDown(self):
+        shutil.rmtree(self.tdir)
+
     def test_dirs(self):
         shutil.rmtree(self.tdir)
         self.assertFalse(os.path.isdir(self.tdir))
@@ -104,9 +107,6 @@ class WorkingDirectory(unittest.TestCase):
         for i in ['good', 'bad', 'ugly']:
             self.wdir.status = i
             self.assertEquals(self.wdir.status, i)
-
-    def tearDown(self):
-        shutil.rmtree(self.tdir)
 
 
 class WorkingDirectorySuccess(WorkingDirectory):
@@ -189,6 +189,9 @@ class WorkAreaSuccess(unittest.TestCase):
         self.tdir = tempfile.mkdtemp(dir='tests')
         self.assertTrue(os.path.isdir(self.tdir))
         self.warea = rain.WorkArea(logger, self.tdir, trueprog)
+
+    def tearDown(self):
+        shutil.rmtree(self.tdir)
 
     def test_pushd(self):
         startdir = os.getcwd()
