@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <21-Feb-2014 09:35:32 PST by rich@noir.com>
+# Time-stamp: <21-Feb-2014 12:41:53 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -60,68 +60,75 @@ def isodate():
     return datetime.datetime.now().isoformat()
 
 
-class StateDirectory(object):
-    """StateDirectory"""
+class Statefull(object):
+    class _StateDirectory(object):
+        """_StateDirectory"""
+
+        def __init__(self, dirname):
+            object.__setattr__(self, 'dirname', os.path.abspath(os.path.normpath(dirname)))
+
+        def mkstatedir(self):
+            try:
+                os.mkdir(self.dirname)
+            except OSError:
+                if not os.path.isdir(self.dirname):
+                    raise
+
+        def fname(self, name):
+            """fname"""
+            return os.path.join(self.dirname, name)
+
+        def __getattr__(self, name):
+            """accesssor"""
+            fname = self.fname(name)
+
+            if os.path.exists(fname):
+                with open(fname, 'r') as ifile:
+                    return ifile.read().strip()
+            else:
+                return None
+
+        def __setattr__(self, name, newval):
+            """setter"""
+            fname = self.fname(name)
+
+            with open(fname, 'w') as ofile:
+                ofile.write(newval)
+
+        def __deleter__(self, name):
+            """deleter"""
+            fname = self.fname(name)
+
+            try:
+                os.remove(fname)
+
+            except OSError:
+                if not os.path.exists(fname):
+                    pass
+                else:
+                    raise StateRemovalError
+
+            try:
+                os.rmdir(self.dirname)
+
+            except OSError:
+                pass
 
     def __init__(self, dirname):
-        object.__setattr__(self, 'dirname', os.path.abspath(os.path.normpath(dirname)))
+        self.state = self._StateDirectory(dirname)
 
-        try:
-            os.mkdir(self.dirname)
+    def mkstatedir(self):
+        self.state.mkstatedir()
 
-        except OSError:
-            if not os.path.isdir(self.dirname):
-                raise
-
-    def fname(self, name):
-        """fname"""
-        return os.path.join(self.dirname, name)
-
-    def __getattr__(self, name):
-        """accesssor"""
-        fname = self.fname(name)
-
-        if os.path.exists(fname):
-            with open(fname, 'r') as ifile:
-                return ifile.read().strip()
-        else:
-            return None
-
-    def __setattr__(self, name, newval):
-        """setter"""
-        fname = self.fname(name)
-
-        with open(fname, 'w') as ofile:
-            ofile.write(newval)
-
-    def __deleter__(self, name):
-        """deleter"""
-        fname = self.fname(name)
-
-        try:
-            os.remove(fname)
-
-        except OSError:
-            if not os.path.exists(fname):
-                pass
-            else:
-                raise StateRemovalError
-
-        try:
-            os.rmdir(self.dirname)
-
-        except OSError:
-            pass
-
-    def property(self, name):
-        """return a property for name"""
-        return property(lambda: self.__getattr__(name),
-                        lambda newval: self.__setattr__(name, newval),
-                        lambda: self.__deleter__(name),
-                        'generated property from StateDirectory({})'.format(name))
+    @classmethod
+    def statevalue(cls, name):
+        return property(lambda self: self.state.__getattr__(name),
+                        lambda self, newval: self.state.__setattr__(name, newval),
+                        lambda self: self.state.__delattr__(name),
+                        'generated property')
 
 
-class WorkingDirectory(object):
+class WorkingDirectory(Statefull):
     """
     Class reprenting a working directory.
     """
@@ -142,17 +149,10 @@ class WorkingDirectory(object):
             self.absname = os.path.abspath(name)
             self.relname = name
 
+        super().__init__(os.path.join(self.absname, self.statedirname))
+
         if not os.path.isdir(self.absname):
-            self.clear()
-
-        self.state = StateDirectory(os.path.join(self.absname, self.statedirname))
-        self.status = self.state.property('status')
-
-        # FIXME: I don't understand why this is necessary.  But
-        # without it, the first reference to it returns a property
-        # object type rather than evaluating.
-
-        self.status = None
+           self.clear()
 
     def clear(self):
         """
@@ -168,6 +168,7 @@ class WorkingDirectory(object):
 
         self.logger.info('%s - mkdir', self.absname)
         os.mkdir(self.absname)
+        self.mkstatedir()
 
     @contextlib.contextmanager
     def pushd(self):
@@ -225,8 +226,10 @@ class WorkingDirectory(object):
         self.logger.info('%s - cd && %s', self.name, cmd)
         return subprocess.call(shlex.split(cmd), stdout=logfile, stderr=logfile, cwd=self.absname)
 
+WorkingDirectory.status = WorkingDirectory.statevalue('status')
 
-class WorkArea(object):
+
+class WorkArea(Statefull):
     """
     A WorkArea represents a place in the file system which will contain
     WorkingDirectory's.  It also contains a rain.mk and some state.
@@ -242,7 +245,7 @@ class WorkArea(object):
         self.logger = logger
         self.name = name
 
-        # relname isn't dynamic because it's dependent on cwd.
+        # Relname isn't dynamic because it's dependent on cwd.
         name = os.path.normpath(name)
         if os.path.isabs(name):
             self.absname = name
@@ -258,13 +261,9 @@ class WorkArea(object):
                 logger.error('FATAL: WorkArea %s exists and is not a directory'.format(self.name))
                 raise WorkAreaAllocationError
 
-        self.ctrlfilename = os.path.join(self.absname, ctrlfilename)
+        super().__init__(os.path.join(self.absname, self.statedirname))
 
-        self.state = StateDirectory(os.path.join(self.absname, self.statedirname))
-        self.cwd = self.state.property('cwd')
-        self.cwd = None
-        self._wds = self.state.property('wds')
-        self.wds = []
+        self.ctrlfilename = os.path.join(self.absname, ctrlfilename)
 
     @contextlib.contextmanager
     def pushd(self):
@@ -278,11 +277,13 @@ class WorkArea(object):
 
         os.chdir(savedir)
 
-
     @property
     def wds(self):
         """return a list of known working directories"""
-        return sorted(self._wds.strip().split('\n'))
+        _wds = self._wds
+        if _wds is None:
+            _wds = ''
+        return sorted(_wds.strip().split('\n'))
 
     @wds.setter
     def wds(self, newval):
@@ -341,4 +342,6 @@ class WorkArea(object):
 
         return retval
 
+WorkArea.cwd = WorkArea.statevalue('cwd')
+WorkArea._wds = WorkArea.statevalue('wds')
 

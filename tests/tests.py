@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <21-Feb-2014 09:36:13 PST by rich@noir.com>
+# Time-stamp: <21-Feb-2014 12:41:15 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -33,9 +33,97 @@ if verbose_logging:
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
+class StateDirectory(unittest.TestCase):
+    def setUp(self):
+        self.tdir = tempfile.mkdtemp(dir='tests')
+        shutil.rmtree(self.tdir)
+        self.state = rain.Statefull._StateDirectory(self.tdir)
+        self.state.mkstatedir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tdir)
+
+    def test_persistence(self):
+        self.assertEquals(self.state.one, None)
+        self.assertEquals(self.state.two, None)
+        self.assertEquals(self.state.three, None)
+
+        self.state.one = 'first'
+        self.assertEquals(self.state.one, 'first')
+        self.assertEquals(self.state.two, None)
+        self.assertEquals(self.state.three, None)
+
+        self.state.two = 'second'
+        self.assertEquals(self.state.one, 'first')
+        self.assertEquals(self.state.two, 'second')
+        self.assertEquals(self.state.three, None)
+
+        self.state.three = 'third'
+        self.assertEquals(self.state.one, 'first')
+        self.assertEquals(self.state.two, 'second')
+        self.assertEquals(self.state.three, 'third')
+
+        self.state = rain.Statefull._StateDirectory(self.tdir)
+        self.assertEquals(self.state.one, 'first')
+        self.assertEquals(self.state.two, 'second')
+        self.assertEquals(self.state.three, 'third')
+
+class Statefull(unittest.TestCase):
+    class Mystate(rain.Statefull):
+        pass
+
+    Mystate.one = Mystate.statevalue('one')
+    Mystate.two = Mystate.statevalue('two')
+    Mystate.three = Mystate.statevalue('three')
+
+    def setUp(self):
+        self.tdir = tempfile.mkdtemp(dir='tests')
+        shutil.rmtree(self.tdir)
+        self.mystate = self.Mystate(self.tdir)
+        self.mystate.mkstatedir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tdir)
+
+    def test_statevalue(self):
+        self.assertEquals(self.mystate.one, None)
+        self.assertEquals(self.mystate.two, None)
+        self.assertEquals(self.mystate.three, None)
+
+        self.mystate.one = 'first'
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, None)
+        self.assertEquals(self.mystate.three, None)
+
+        # persistence check
+        self.mystate = self.Mystate(self.tdir)
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, None)
+        self.assertEquals(self.mystate.three, None)
+
+        self.mystate.two = 'second'
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, 'second')
+        self.assertEquals(self.mystate.three, None)
+
+        # persistence check
+        self.mystate = self.Mystate(self.tdir)
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, 'second')
+        self.assertEquals(self.mystate.three, None)
+
+        self.mystate.three = 'third'
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, 'second')
+        self.assertEquals(self.mystate.three, 'third')
+
+        # persistence check
+        self.mystate = self.Mystate(self.tdir)
+        self.assertEquals(self.mystate.one, 'first')
+        self.assertEquals(self.mystate.two, 'second')
+        self.assertEquals(self.mystate.three, 'third')
 
 class isodate(unittest.TestCase):
-
     def test_isodate(self):
         self.assertEqual(len(rain.isodate()), 26)
 
@@ -67,6 +155,7 @@ class WorkingDirectory(unittest.TestCase):
         self.assertTrue(os.path.isdir(self.tdir))
 
         self.wdir = rain.WorkingDirectory(logger, self.tdir, self.ctrlstub)
+        print('clearing')
         self.wdir.clear()
 
     def tearDown(self):
@@ -83,7 +172,7 @@ class WorkingDirectory(unittest.TestCase):
         self.wdir.clear()
         self.assertTrue(os.path.isdir(self.tdir))
 
-        os.rmdir(self.tdir)
+        shutil.rmtree(self.tdir)
         with open(self.tdir, 'w') as ofile:
             pass
 
@@ -100,12 +189,16 @@ class WorkingDirectory(unittest.TestCase):
         self.assertEqual(os.getcwd(), cwd)
 
     def test_status(self):
-        print('test_status')
-        print(self.wdir.status)
         self.assertEquals(self.wdir.status, None)
+
+        print('self.tdir = {}'.format(self.tdir))
 
         for i in ['good', 'bad', 'ugly']:
             self.wdir.status = i
+            self.assertEquals(self.wdir.status, i)
+
+            # persistence test
+            self.wdir = rain.WorkingDirectory(logger, self.tdir, self.ctrlstub)
             self.assertEquals(self.wdir.status, i)
 
 
@@ -189,6 +282,7 @@ class WorkAreaSuccess(unittest.TestCase):
         self.tdir = tempfile.mkdtemp(dir='tests')
         self.assertTrue(os.path.isdir(self.tdir))
         self.warea = rain.WorkArea(logger, self.tdir, trueprog)
+        self.warea.mkstatedir()
 
     def tearDown(self):
         shutil.rmtree(self.tdir)
@@ -212,19 +306,27 @@ class WorkAreaSuccess(unittest.TestCase):
         self.warea.cwd = 'three'
         self.assertEqual(self.warea.cwd, 'three')
 
-        del self.warea.cwd
-        self.assertRaises(AttributeError, lambda: self.warea.cwd)
-
     def test_wds(self):
         self.assertEquals(self.warea.wds, [''])
 
         self.warea.wds = self.warea.wds + ['one']
         self.assertEquals(self.warea.wds, ['one'])
 
+        # test persistence by dropping WorkArea and creating another
+        # on the same directory.
+        self.warea = rain.WorkArea(logger, self.tdir, trueprog)
+        self.assertEquals(self.warea.wds, ['one'])
+
         self.warea.wds = self.warea.wds + ['two']
         self.assertEquals(self.warea.wds, ['one', 'two'])
 
+        self.warea = rain.WorkArea(logger, self.tdir, trueprog)
+        self.assertEquals(self.warea.wds, ['one', 'two'])
+
         self.warea.wds = self.warea.wds + ['three']
+        self.assertEquals(self.warea.wds, ['one', 'three', 'two'])
+
+        self.warea = rain.WorkArea(logger, self.tdir, trueprog)
         self.assertEquals(self.warea.wds, ['one', 'three', 'two'])
 
         self.warea.wds = ['']
