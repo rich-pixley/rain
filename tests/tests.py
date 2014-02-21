@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: <20-Feb-2014 19:38:22 PST by rich@noir.com>
+# Time-stamp: <20-Feb-2014 19:48:27 PST by rich@noir.com>
 
 # Copyright © 2013 - 2014 K Richard Pixley
 
@@ -39,21 +39,41 @@ class isodate(unittest.TestCase):
     def test_isodate(self):
         self.assertEqual(len(rain.isodate()), 26)
 
+bintrueprog = '/bin/true'
+usrbintrueprog = '/usr/bin/true'
+
+if os.access(bintrueprog, os.X_OK):
+    trueprog = bintrueprog
+elif os.access(usrbintrueprog, os.X_OK):
+    trueprog = usrbintrueprog
+else:
+    raise NotImplementedError
+
+binfalseprog = '/bin/false'
+usrbinfalseprog = '/usr/bin/false'
+
+if os.access(binfalseprog, os.X_OK):
+    falseprog = binfalseprog
+elif os.access(usrbinfalseprog, os.X_OK):
+    falseprog = usrbinfalseprog
+else:
+    raise NotImplementedError
+
 class WorkingDirectory(unittest.TestCase):
-    mkstub = '/bin/true'
+    ctrlstub = trueprog
 
     def setUp(self):
         self.tdir = tempfile.mkdtemp(dir='tests')
         self.assertTrue(os.path.isdir(self.tdir))
 
-        self.wdir = rain.WorkingDirectory(logger, self.tdir, self.mkstub)
+        self.wdir = rain.WorkingDirectory(logger, self.tdir, self.ctrlstub)
         self.wdir.clear()
 
     def test_dirs(self):
         shutil.rmtree(self.tdir)
         self.assertFalse(os.path.isdir(self.tdir))
 
-        self.wdir = rain.WorkingDirectory(logger, self.tdir, '/bin/false')
+        self.wdir = rain.WorkingDirectory(logger, self.tdir, falseprog)
         self.wdir.clear()
         self.assertTrue(os.path.isdir(self.tdir))
 
@@ -91,6 +111,7 @@ class WorkingDirectory(unittest.TestCase):
 
 class WorkingDirectorySuccess(WorkingDirectory):
     output = subprocess.DEVNULL
+    ctrlstub = trueprog
 
     def setUp(self):
         WorkingDirectory.setUp(self)
@@ -109,7 +130,7 @@ class WorkingDirectorySuccess(WorkingDirectory):
 
 class WorkingDirectoryFailure(WorkingDirectory):
     output = subprocess.DEVNULL
-    mkstub = '/bin/false'
+    ctrlstub = falseprog
 
     def setUp(self):
         WorkingDirectory.setUp(self)
@@ -167,7 +188,7 @@ class WorkAreaSuccess(unittest.TestCase):
     def setUp(self):
         self.tdir = tempfile.mkdtemp(dir='tests')
         self.assertTrue(os.path.isdir(self.tdir))
-        self.warea = rain.WorkArea(logger, self.tdir, '/bin/true')
+        self.warea = rain.WorkArea(logger, self.tdir, trueprog)
 
     def test_pushd(self):
         startdir = os.getcwd()
